@@ -85,7 +85,7 @@ void detectEyes(Mat& img, const vector<Rect_<int> > faces, string eye_cascade_pa
     {
         Rect face = faces[i];
         rectangle(img, Point(face.x, face.y), Point(face.x+face.width, face.y+face.height),
-                Scalar(255, 0, 0), 1, 4);
+                Scalar(0, 0, 255), 1, 4);
         Mat ROI = img(Rect(face.x, face.y, face.width, face.height));
 
         vector<Rect_<int> > eyes;
@@ -97,8 +97,18 @@ void detectEyes(Mat& img, const vector<Rect_<int> > faces, string eye_cascade_pa
         {
             Rect e = eyes[j];
             // circle(ROI, Point(e.x+e.width/2, e.y+e.height/2), 3, Scalar(0, 255, 0), -1, 8);
-            rectangle(ROI, Point(e.x, e.y), Point(e.x+e.width, e.y+e.height),
-                Scalar(0, 255, 0), 1, 4);
+            
+            // Calculate parameters for eyebrow bounding box from those of eye bounding box
+            int eyebrow_bbox_x = e.x;
+            int eyebrow_bbox_y = (e.y - e.height/5);
+            
+            int eyebrow_bbox_height = (e.height * 3)/5;
+            int eyebrow_bbox_width = (e.width * 3)/2;
+            
+            // Mark eyebrow region
+            rectangle(ROI, Point(eyebrow_bbox_x, eyebrow_bbox_y), 
+                    Point(eyebrow_bbox_x+eyebrow_bbox_width, eyebrow_bbox_y+eyebrow_bbox_height), 
+                    Scalar(255, 0, 0), 1, 4);
         }
     }
 }

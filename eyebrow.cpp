@@ -19,6 +19,9 @@
 #include <cstdio>
 #include <vector>
 #include <algorithm>
+#include <cmath>
+
+#define PI 3.1416
 
 using namespace std;
 using namespace cv;
@@ -26,6 +29,8 @@ using namespace cv;
 void help();
 void detectFaces(Mat&, vector<Rect_<int> >&, string);
 void detectEyes(Mat&, const vector<Rect_<int> >, string);
+Mat BGR2HSI(const Mat&);
+int Min(int, int, int);
 
 string input_image_path;
 string face_cascade_path, eye_cascade_path;
@@ -43,15 +48,17 @@ int main(int argc, char** argv)
     eye_cascade_path = argv[3];
 
     // Load image
-    Mat image = imread(input_image_path);
+    Mat image_BGR = imread(input_image_path);
+    Mat image_HSI = BGR2HSI(image_BGR);
 
     // Detect faces and eyes in image
     vector<Rect_<int> > faces;
-    detectFaces(image, faces, face_cascade_path);
-    detectEyes(image, faces, eye_cascade_path);
+    detectFaces(image_BGR, faces, face_cascade_path);
+    detectEyes(image_BGR, faces, eye_cascade_path);
 
     // Display result
-    imshow("Result", image);
+    imshow("Result_BGR", image_BGR);
+    imshow("Result_HSI", image_HSI);
 
     waitKey(0);
     return 0;
@@ -112,3 +119,45 @@ void detectEyes(Mat& img, const vector<Rect_<int> > faces, string eye_cascade_pa
         }
     }
 }
+
+Mat BGR2HSI(const Mat& bgr)
+{
+    Mat hsi(bgr.size(), CV_8UC3);
+    Mat_<Vec3b> _bgr = bgr;
+    Mat_<Vec3b> _hsi = hsi;
+    for(int i = 0; i < bgr.rows; ++i)
+    {
+        for(int j = 0; j < bgr.cols; ++j)
+        {
+            int B = _bgr(i, j)[0];
+            int G = _bgr(i, j)[1];
+            int R = _bgr(i, j)[2];
+            
+            int min = Min(R, G, B);
+            double numerator = (double)((2*R - G - B)/2);
+            double denominator = (sqrt((R-G)*(R-G) + (R-B)*(G-B)));
+            
+            double I = (double)(B + G + R)/3;
+            double S = (I == 0) ? 0 : (double)(I - min)/I;
+            double H = (B <= G) ? acos(numerator/denominator) : 
+                (2*PI - acos(numerator/denominator));
+
+            _hsi(i, j)[0] = H;
+            _hsi(i, j)[1] = S;
+            _hsi(i, j)[2] = I;
+        }
+    }
+    hsi = _hsi;
+    return hsi;
+}
+
+inline int Min(int x, int y, int z)
+{
+    if ((x <= y) && (x <= z))
+        return x;
+    else if ((y < x) && (y < z))
+        return y;
+    else
+        return z;
+}
+

@@ -1,6 +1,7 @@
 #ifndef _BGR2HSI_CPP
 #define _BGR2HSI_CPP
 
+#include <iostream>
 #include "opencv2/highgui/highgui.hpp"
 #include "bgr2hsi.h"
 using namespace std;
@@ -64,6 +65,37 @@ Mat BGR2HSI::convert()
 Mat_<Vec3d> BGR2HSI::returnTrueHSI()
 {
     return true_hsi;
+}
+
+Mat BGR2HSI::extractIntensityPlane(const Mat_<Vec3b>& hsi)
+{
+    Mat intensity_plane(hsi.size(), CV_8UC1);
+    for(int i = 0; i < hsi.rows; ++i)
+    {
+        uchar* _intensity_plane_row = intensity_plane.ptr<uchar>(i);
+        for(int j = 0; j < hsi.cols; ++j)
+            _intensity_plane_row[j] = hsi(i, j)[2];
+    }
+    return intensity_plane;
+}
+
+vector<double> BGR2HSI::calculateHistogram(const Mat& intensity_plane)
+{
+    vector<int> histogram_frequency(256, 0);
+    vector<double> histogram(256, 0.0);
+    int total_pixels = (intensity_plane.rows * intensity_plane.cols);
+
+    for(int i = 0; i < intensity_plane.rows; ++i)
+    {
+        const uchar* intensity_plane_row = intensity_plane.ptr<uchar>(i);
+        for(int j = 0; j < intensity_plane.cols; ++j)
+            histogram_frequency[intensity_plane_row[j]] += 1;
+    }
+
+    for(int i = 0; i < 256; ++i)
+        histogram[i] = (double)histogram_frequency[i]/total_pixels;
+
+    return histogram;
 }
 
 #endif

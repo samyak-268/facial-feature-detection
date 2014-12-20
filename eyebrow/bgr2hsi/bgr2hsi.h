@@ -17,6 +17,8 @@ class BGR2HSI
         BGR2HSI(const BGR2HSI& _obj);
         Mat convert();
         Mat_<Vec3d> returnTrueHSI();
+        Mat extractIntensityPlane(const Mat_<Vec3b>& hsi);
+        vector<double> calculateHistogram(const Mat& intensity_plane);
 };
 
 #endif

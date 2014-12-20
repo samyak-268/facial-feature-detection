@@ -42,6 +42,13 @@ int main(int argc, char** argv)
     // Convert image to HSI
     BGR2HSI converter(image_BGR);
     Mat image_HSI = converter.convert();
+    Mat intensity_plane = converter.extractIntensityPlane(image_HSI);
+    vector<double> intensity_plane_histogram = converter.calculateHistogram(intensity_plane);
+
+    cout << "Histogram of the intensity plane: \n";
+    for(int i = 0; i < 256; ++i)
+        cout << intensity_plane_histogram[i] << ", ";
+    cout << "\n";
 
     // Detect faces and eyebrows in image
     EyebrowROI eyebrow_detector(image_BGR, face_cascade_path, eye_cascade_path);

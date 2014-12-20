@@ -12,6 +12,7 @@ class BGR2HSI
         int Min(int x, int y, int z);
 
     public:
+        Mat_<Vec3d> true_hsi;
         BGR2HSI(const Mat& _bgr);
         BGR2HSI(const BGR2HSI& _obj);
         Mat convert();

@@ -50,9 +50,9 @@ Mat BGR2HSI::convert()
             double H = (B <= G) ? acos(numerator/denominator) : 
                 (2*PI - acos(numerator/denominator));
 
-            _hsi(i, j)[0] = H;
-            _hsi(i, j)[1] = S;
-            _hsi(i, j)[2] = I;
+            _hsi(i, j)[0] = H;  true_hsi(i, j)[0] = H;
+            _hsi(i, j)[1] = S;  true_hsi(i, j)[1] = S;
+            _hsi(i, j)[2] = I;  true_hsi(i, j)[2] = I;
         }
     }
     hsi = _hsi;

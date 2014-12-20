@@ -11,11 +11,13 @@ using namespace cv;
 BGR2HSI::BGR2HSI(const Mat& _bgr)
     :bgr(_bgr)
 {
+    true_hsi.create(bgr.size());
 }
 
 BGR2HSI::BGR2HSI(const BGR2HSI& _obj)
 {
     bgr = _obj.bgr;
+    true_hsi = _obj.true_hsi;
 }
 
 int BGR2HSI::Min(int x, int y, int z)
@@ -59,5 +61,9 @@ Mat BGR2HSI::convert()
     return hsi;
 }
 
+Mat_<Vec3d> BGR2HSI::returnTrueHSI()
+{
+    return true_hsi;
+}
 
 #endif

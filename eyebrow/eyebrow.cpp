@@ -47,7 +47,7 @@ int main(int argc, char** argv)
     EyebrowROI eyebrow_detector(image_BGR, face_cascade_path, eye_cascade_path);
     eyebrow_detector.detectEyebrows();
     eyebrow_detector.displayROI();
-    
+
     waitKey(0);
     return 0;
 }

@@ -100,16 +100,16 @@ vector<double> BGR2HSI::calculateHistogram(const Mat& intensity_plane)
     return histogram;
 }
 
-vector<double> BGR2HSI::equalizeHistogram(const vector<double>& histogram)
+vector<uchar> BGR2HSI::equalizeHistogram(const vector<double>& histogram)
 {
     int L = histogram.size();
-    vector<double> equalized_histogram(L, 0.0);
+    vector<uchar> equalized_histogram(L, 0);
 
     double cumulative_frequency_sum = 0.0;
     for(int i = 0; i < L; ++i)
     {
         cumulative_frequency_sum += histogram[i];
-        equalized_histogram[i] = (cumulative_frequency_sum * (L-1));
+        equalized_histogram[i] = round(cumulative_frequency_sum * (L-1));
     }
     
     return equalized_histogram;

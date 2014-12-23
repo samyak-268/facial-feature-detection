@@ -44,23 +44,22 @@ int main(int argc, char** argv)
     Mat image_HSI = converter.convert();
     Mat intensity_plane = converter.extractIntensityPlane(image_HSI);
     vector<double> intensity_plane_histogram = converter.calculateHistogram(intensity_plane);
-    vector<double> equalized_histogram = converter.equalizeHistogram(intensity_plane_histogram);
+    vector<uchar> transformation_function = converter.equalizeHistogram(intensity_plane_histogram);
 
     cout << "Histogram of the intensity plane: \n";
     for(int i = 0; i < 256; ++i)
         cout << intensity_plane_histogram[i] << ", ";
     cout << "\n";
 
-    cout << "Equalized histogram of the intensity plane: \n";
+    cout << "Transformation function: \n";
     for(int i = 0; i < 256; ++i)
-        cout <<equalized_histogram[i] << ", ";
+        cout << i << " --> " << (int)transformation_function[i] << "\n";
     cout << "\n";
     
-    /* Detect faces and eyebrows in image
+    // Detect faces and eyebrows in image
     EyebrowROI eyebrow_detector(image_BGR, face_cascade_path, eye_cascade_path);
     eyebrow_detector.detectEyebrows();
     eyebrow_detector.displayROI();
-    */
 
     waitKey(0);
     return 0;

@@ -2,8 +2,10 @@
 #define _BGR2HSI_CPP
 
 #include <iostream>
+#include <cmath>
 #include "opencv2/highgui/highgui.hpp"
 #include "bgr2hsi.h"
+
 using namespace std;
 using namespace cv;
 
@@ -96,6 +98,21 @@ vector<double> BGR2HSI::calculateHistogram(const Mat& intensity_plane)
         histogram[i] = (double)histogram_frequency[i]/total_pixels;
 
     return histogram;
+}
+
+vector<double> BGR2HSI::equalizeHistogram(const vector<double>& histogram)
+{
+    int L = histogram.size();
+    vector<double> equalized_histogram(L, 0.0);
+
+    double cumulative_frequency_sum = 0.0;
+    for(int i = 0; i < L; ++i)
+    {
+        cumulative_frequency_sum += histogram[i];
+        equalized_histogram[i] = (cumulative_frequency_sum * (L-1));
+    }
+    
+    return equalized_histogram;
 }
 
 #endif

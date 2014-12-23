@@ -13,6 +13,7 @@
 
 #include "bgr2hsi.h"
 #include "eyebrow_roi.h"
+#include "histogram.h"
 
 #include <iostream>
 

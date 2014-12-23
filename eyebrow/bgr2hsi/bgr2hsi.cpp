@@ -100,7 +100,7 @@ vector<double> BGR2HSI::calculateHistogram(const Mat& intensity_plane)
     return histogram;
 }
 
-vector<uchar> BGR2HSI::equalizeHistogram(const vector<double>& histogram)
+vector<uchar> BGR2HSI::transformationMap(const vector<double>& histogram)
 {
     int L = histogram.size();
     vector<uchar> equalized_histogram(L, 0);

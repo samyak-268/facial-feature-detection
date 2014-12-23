@@ -44,7 +44,7 @@ int main(int argc, char** argv)
     Mat image_HSI = converter.convert();
     Mat intensity_plane = converter.extractIntensityPlane(image_HSI);
     vector<double> intensity_plane_histogram = converter.calculateHistogram(intensity_plane);
-    vector<uchar> transformation_function = converter.equalizeHistogram(intensity_plane_histogram);
+    vector<uchar> transformation_function = converter.transformationMap(intensity_plane_histogram);
 
     cout << "Histogram of the intensity plane: \n";
     for(int i = 0; i < 256; ++i)

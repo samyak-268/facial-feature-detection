@@ -18,12 +18,6 @@ class BGR2HSI
         Mat convert();
         Mat_<Vec3d> returnTrueHSI();
         Mat extractIntensityPlane(const Mat_<Vec3b>& hsi);
-        
-        vector<double> calculateHistogram(const Mat& intensity_plane);
-        vector<uchar> transformationMap(const vector<double>& histogram);
-        Mat equalizedImage(const Mat& intensity_plane, const vector<uchar>& transformation_map);
-        vector<double> equalizeHistogram(const Mat& equalized_intensity_plane);
-
 };
 
 #endif

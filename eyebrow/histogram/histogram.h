@@ -22,7 +22,7 @@ class Histogram
         void calculateFrequencyHistogram();
         void calculateHistogram();
         void calculateTransformationMap();
-        Mat constructEqualizedImage();
+        void constructEqualizedImage();
         vector<double> calculateEqualizedHistogram();
         
         vector<int> frequencyHistogram();

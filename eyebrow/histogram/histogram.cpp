@@ -60,8 +60,9 @@ void Histogram::calculateTransformationMap()
     }
 }
 
-Mat Histogram::constructEqualizedImage()
+void Histogram::constructEqualizedImage()
 {
+    calculateTransformationMap();
     for (int i = 0; i < intensity_plane.rows; ++i)
     {
         const uchar* intensity_plane_row = intensity_plane.ptr<uchar>(i);
@@ -69,11 +70,26 @@ Mat Histogram::constructEqualizedImage()
         for(int j = 0; j < intensity_plane.cols; ++j)
             equalized_intensity_plane_row[j] = transformation_map[intensity_plane_row[j]];
     }
-    return equalized_intensity_plane;
 }
 
 vector<double> Histogram::calculateEqualizedHistogram()
 {
+    constructEqualizedImage();
+
+    vector<int> frequency_histogram_eq(HISTOGRAM_SIZE, 0);
+    for(int i = 0; i < equalized_intensity_plane.rows; ++i)
+    {
+        const uchar* intensity_plane_row_eq = equalized_intensity_plane.ptr<uchar>(i);
+        for(int j = 0; j < equalized_intensity_plane.cols; ++j)
+            frequency_histogram_eq[intensity_plane_row_eq[j]] += 1;
+    }
+    
+    int total_pixels = (equalized_intensity_plane.rows * 
+            equalized_intensity_plane.cols);
+
+    for(int i = 0; i < HISTOGRAM_SIZE; ++i)
+        equalized_histogram[i] = (double)frequency_histogram_eq[i]/total_pixels;
+
     return equalized_histogram;
 }
 

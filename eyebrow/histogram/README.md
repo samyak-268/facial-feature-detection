@@ -13,3 +13,22 @@ This modules contains functions for constructing a histogram from a given intens
 4. ``` Mat constructEqualizedImage() ```: This method utilizes the transformation map created by the ``` void calculateTransformationMap() ``` method to create and return the output, histogram-equalized image. The equalized image can also be retrieved via a call to the ``` Mat equalizedImage() ``` method.
 
 5. ``` vector<double> calculateEqualizedHistogram() ```: This method is used to calculate the final equalized histogram corresponding to the equalized image constructed by ``` Mat constructEqualizedImage() ```. A call to ``` vector<double> equalizedHistogram() ``` returns the equalized histogram computed by this method.
+
+
+## Example Usage
+```
+#include "histogram.h"
+
+// The input image (intensity plane) must be 8-bit, single channel
+Mat intensity_plane = imread(input_image_path);
+Histogram hist_calc_obj(intensity_plane);
+
+// Calcualting and storing the equalized histogram values
+hist_calc_obj.calculateEqualizedHistogram();
+vector<double> eq_hist = his_calc_obj.equalizedHistogram();
+
+// Constructing and displaying the histogram-equalized image
+hist_calc_obj.constructEqualizedImage();
+Mat eq_intensity_plane = hist_calc_obj.equalizedImage();
+imshow("Equalized-Intensity-Plane", eq_intensity_plane);
+```

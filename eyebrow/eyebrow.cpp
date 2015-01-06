@@ -44,9 +44,18 @@ int main(int argc, char** argv)
     BGR2HSI converter(image_BGR);
     Mat image_HSI = converter.convert();
     Mat intensity_plane = converter.extractIntensityPlane(image_HSI);
-    
-    imshow("Intensity-Plane", intensity_plane);
 
+    // Perform histogram equalization on the intensity plane
+    Histogram hist_calc_obj(intensity_plane);
+    hist_calc_obj.constructEqualizedImage();
+    Mat eq_intensity_plane = hist_calc_obj.equalizedImage();
+    hist_calc_obj.calculateEqualizedHistogram();
+    vector<double> eq_hist = hist_calc_obj.equalizedHistogram();
+    
+    imshow("Original-Image", image_BGR);
+    imshow("Intensity-Plane", intensity_plane);
+    imshow("Equalized-Intensity-Plane", eq_intensity_plane);
+    
     // Detect faces and eyebrows in image
     EyebrowROI eyebrow_detector(image_BGR, face_cascade_path, eye_cascade_path);
     eyebrow_detector.detectEyebrows();

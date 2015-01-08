@@ -13,9 +13,9 @@
 
 #include "bgr2hsi.h"
 #include "eyebrow_roi.h"
-#include "histogram.h"
 
 #include <iostream>
+#include "opencv2/imgproc/imgproc.hpp"
 
 using namespace std;
 using namespace cv;
@@ -24,6 +24,8 @@ void help();
 
 string input_image_path;
 string face_cascade_path, eye_cascade_path;
+
+Mat_<Vec3b> equalizeImage(const Mat& image_BGR);
 
 int main(int argc, char** argv)
 {
@@ -37,32 +39,37 @@ int main(int argc, char** argv)
     face_cascade_path = argv[2];
     eye_cascade_path = argv[3];
 
-    // Load image
+    // Load and equalize image
     Mat image_BGR = imread(input_image_path);
+    Mat_<Vec3b> eq_image_BGR = equalizeImage(image_BGR);
 
-    // Convert image to HSI
-    BGR2HSI converter(image_BGR);
-    Mat image_HSI = converter.convert();
-    Mat intensity_plane = converter.extractIntensityPlane(image_HSI);
-
-    // Perform histogram equalization on the intensity plane
-    Histogram hist_calc_obj(intensity_plane);
-    hist_calc_obj.constructEqualizedImage();
-    Mat eq_intensity_plane = hist_calc_obj.equalizedImage();
-    hist_calc_obj.calculateEqualizedHistogram();
-    vector<double> eq_hist = hist_calc_obj.equalizedHistogram();
-    
     imshow("Original-Image", image_BGR);
-    imshow("Intensity-Plane", intensity_plane);
-    imshow("Equalized-Intensity-Plane", eq_intensity_plane);
+    imshow("Equalized-Image", eq_image_BGR);
     
     // Detect faces and eyebrows in image
-    EyebrowROI eyebrow_detector(image_BGR, face_cascade_path, eye_cascade_path);
-    eyebrow_detector.detectEyebrows();
-    eyebrow_detector.displayROI();
+    // EyebrowROI eyebrow_detector(image_BGR, face_cascade_path, eye_cascade_path);
+    // eyebrow_detector.detectEyebrows();
+    // eyebrow_detector.displayROI();
 
     waitKey(0);
     return 0;
+}
+
+Mat_<Vec3b> equalizeImage(const Mat& image_BGR)
+{
+    // Convert image to HSI and extract intensity plane
+    BGR2HSI converter(image_BGR);
+    Mat image_HSI = converter.convert();
+    Mat intensity_plane = converter.extractIntensityPlane(image_HSI);
+    
+    // Perform histogram equalization on the intensity plane and merge it back
+    Mat eq_intensity_plane;
+    equalizeHist(intensity_plane, eq_intensity_plane);
+    Mat_<Vec3d> equalized_hsi = converter.combinePlanes(converter.returnTrueHSI(), eq_intensity_plane);
+
+    // Convert the HSI image back to BGR
+    Mat_<Vec3b> eq_image_BGR = converter.invert(equalized_hsi);
+    return eq_image_BGR;
 }
 
 void help()

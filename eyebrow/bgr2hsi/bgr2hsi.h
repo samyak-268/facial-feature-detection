@@ -16,8 +16,10 @@ class BGR2HSI
         BGR2HSI(const Mat& _bgr);
         BGR2HSI(const BGR2HSI& _obj);
         Mat convert();
+        Mat_<Vec3b> invert(const Mat_<Vec3d>& hsi);
         Mat_<Vec3d> returnTrueHSI();
         Mat extractIntensityPlane(const Mat_<Vec3b>& hsi);
+        Mat_<Vec3d> combinePlanes(const Mat_<Vec3d>& hsi, const Mat& intensity_plane);
 };
 
 #endif

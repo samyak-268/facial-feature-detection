@@ -23,6 +23,7 @@ Mat_<uchar> CRTransform(const Mat& image);
 Mat_<uchar> exponentialTransform(const Mat_<uchar>& image);
 pair<double, double> returnImageStats(const Mat_<uchar>& image);
 Mat_<uchar> binaryThresholding(const Mat_<uchar>& image, const pair<double, double>& stats);
+int returnLargestContourIndex(vector<vector<Point> > contours);
 
 int main(int argc, char** argv)
 {
@@ -47,11 +48,30 @@ int main(int argc, char** argv)
     Mat_<uchar> image_exp = exponentialTransform(CRTransform(eyebrows_roi[0]));
     Mat_<uchar> image_binary = binaryThresholding(image_exp, returnImageStats(image_exp));
 
+    // A clone image is required because findContours() modifies the input image
+    Mat image_binary_clone = image_binary.clone();
     vector<vector<Point> > contours;
-    findContours(image_binary, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+    findContours(image_binary_clone, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+    
+    // Initialize blank image (for drawing contours)
+    Mat_<uchar> image_contour(image_binary.size());
+    for(int i = 0; i < image_contour.rows; ++i)
+    {
+        for(int j = 0; j < image_contour.cols; ++j)
+            image_contour.at<uchar>(i, j) = 0;
+    }
 
-    imshow("Exponential-Transform", image_binary);
+    // Draw largest contour on the blank image
+    cout << "Size of the contour image: " << image_contour.rows << " X " << image_contour.cols << "\n";
+    int largest_contour_idx = returnLargestContourIndex(contours);
+    for(int i = 0; i < contours[largest_contour_idx].size(); ++i)
+    {
+        Point_<int> pt = contours[largest_contour_idx][i];
+        image_contour.at<uchar>(pt.y, pt.x) = 255;
+    }
 
+    imshow("Binary-Image", image_binary);
+    imshow("Contour", image_contour);
 
     waitKey(0);
     return 0;
@@ -125,4 +145,19 @@ Mat_<uchar> binaryThresholding(const Mat_<uchar>& image, const pair<double, doub
         }
     }
     return image_binary;
+}
+
+int returnLargestContourIndex(vector<vector<Point> > contours)
+{
+    int max_contour_size = 0;
+    int max_contour_idx = -1;
+    for(int i = 0; i < contours.size(); ++i)
+    {
+        if(contours[i].size() > max_contour_size)
+        {
+            max_contour_size = contours[i].size();
+            max_contour_idx = i;
+        }
+    }
+    return max_contour_idx;
 }

@@ -1,41 +1,34 @@
 /*
  * Author: Samyak Datta (datta[dot]samyak[at]gmail.com)
  *
- * A program to automatically detect eyebrows and eyebrow key points using a color-based
- * method of eyebrow segmentation that extracts a pseudo-hue plane to separate the eyebrow 
- * from the skin region. 
- *
  * This code is an implementation of the following paper
- * Majumder, A. Singh, M. and Behera, L., "Automatic eyebrow features detection and realization 
- * of avatar for real time eyebrow movement", 7th IEEE International Conference on 
- * Industrial and Information Systems (ICIIS),2012
+ * Juliano L. Moreira, Adriana Braun, Soraia R Musse, "Eyes and Eyebrow Detection for 
+ * Performance Driven Animation", 23rd SIBGRAPI Conference on Graphics, Patterns and Images, 2010
+ *
  */
 
 #include "eyebrow_roi.h"
 
 #include <iostream>
-#include <limits>
-#include <cmath>
+#include <utility>
 #include "opencv2/imgproc/imgproc.hpp"
 
 using namespace std;
 using namespace cv;
 
-void help();
-
 string input_image_path;
 string face_cascade_path, eye_cascade_path;
 
-double getMax(const Mat_<double>& intensity_plane);
-double getMin(const Mat_<double>& intensity_plane);
-
-Mat_<uchar> extractPseudoHue(const Mat_<Vec3b> image_BGR);
+Mat_<uchar> CRTransform(const Mat& image); 
+Mat_<uchar> exponentialTransform(const Mat_<uchar>& image);
+pair<double, double> returnImageStats(const Mat_<uchar>& image);
+Mat_<uchar> binaryThresholding(const Mat_<uchar>& image, const pair<double, double>& stats);
 
 int main(int argc, char** argv)
 {
     if(argc != 4)
     {
-        help();
+        cout << "Parameters missing!\n";
         return 1;
     }
 
@@ -43,110 +36,93 @@ int main(int argc, char** argv)
     face_cascade_path = argv[2];
     eye_cascade_path = argv[3];
 
-    // Load and equalize image
     Mat_<Vec3b> image_BGR = imread(input_image_path);
-    // Mat_<Vec3b> eq_image_BGR = equalizeImage(image_BGR);
-    
-    vector<Mat> channels;
-    Mat img_hist_equalized;
-    cvtColor(image_BGR, img_hist_equalized, CV_BGR2YCrCb);
-    split(img_hist_equalized, channels);
-    equalizeHist(channels[0], channels[0]);
-    merge(channels, img_hist_equalized);
-    cvtColor(img_hist_equalized, img_hist_equalized, CV_YCrCb2BGR);
 
-    // Extract pseudo-hue plane
-    Mat_<uchar> normalized_pseudo_hue_plane = extractPseudoHue(img_hist_equalized);
-
-    imshow("Original-Image", image_BGR);
-    imshow("Pseudo-Hue-Plane", normalized_pseudo_hue_plane);
-    
     // Detect faces and eyebrows in image
-    // EyebrowROI eyebrow_detector(image_BGR, face_cascade_path, eye_cascade_path);
-    // eyebrow_detector.detectEyebrows();
-    // eyebrow_detector.displayROI();
+    EyebrowROI eyebrow_detector(image_BGR, face_cascade_path, eye_cascade_path);
+    eyebrow_detector.detectEyebrows();
+    vector<Mat> eyebrows_roi = eyebrow_detector.displayROI();
+
+    // Mat_<uchar> image_exp = exponentialTransform(CRTransform(image_BGR));
+    Mat_<uchar> image_exp = exponentialTransform(CRTransform(eyebrows_roi[0]));
+    Mat_<uchar> image_binary = binaryThresholding(image_exp, returnImageStats(image_exp));
+
+    vector<vector<Point> > contours;
+    findContours(image_binary, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+
+    imshow("Exponential-Transform", image_binary);
+
 
     waitKey(0);
     return 0;
 }
 
-Mat_<uchar> extractPseudoHue(const Mat_<Vec3b> image_BGR)
+Mat_<uchar> CRTransform(const Mat& image)
 {
-    Mat_<double> pseudo_hue_plane(image_BGR.size());
-    
-    // Calculate the pseudo-hue plane
-    for(int i = 0; i < image_BGR.rows; ++i)
+    Mat_<Vec3b> _image = image;
+    Mat_<uchar> CR_image(image.size());
+    for(int i = 0; i < image.rows; ++i)
     {
-        for(int j = 0; j < image_BGR.cols; ++j)
-        {
-            int B = image_BGR(i, j)[0];
-            int G = image_BGR(i, j)[1];
-            int R = image_BGR(i, j)[2];
+        for(int j = 0; j < image.cols; ++j)
+            CR_image.at<uchar>(i, j) = (255 - _image(i, j)[2]);
+    }
+    return CR_image;
+}
 
-            if((R == 0) && (G == 0))
-                pseudo_hue_plane.at<double>(i, j) = 0.0;
+Mat_<uchar> exponentialTransform(const Mat_<uchar>& image)
+{
+    vector<int> exponential_transform(256, 0);
+    for(int i = 0; i < 256; ++i)
+        exponential_transform[i] = round(exp((i * log(255)) / 255));
+
+    Mat_<uchar> image_exp(image.size());
+    for(int i = 0; i < image.rows; ++i)
+    {
+        for(int j = 0; j < image.cols; ++j)
+            image_exp.at<uchar>(i, j) = exponential_transform[image.at<uchar>(i, j)];
+    }
+    return image_exp;
+}
+
+pair<double, double> returnImageStats(const Mat_<uchar>& image)
+{
+    double mean = 0.0, std_dev = 0.0;
+    int total_pixels = (image.rows * image.cols);
+    
+    int intensity_sum = 0;
+    for(int i = 0; i < image.rows; ++i)
+    {
+        for(int j = 0; j < image.cols; ++j)
+            intensity_sum += image.at<uchar>(i, j);
+    }
+    mean = (double)intensity_sum/total_pixels;
+
+    int sum_sq = 0;
+    for(int i = 0; i < image.rows; ++i)
+    {
+        for(int j = 0; j < image.cols; ++j)
+            sum_sq += ( (image.at<uchar>(i, j) - mean) * (image.at<uchar>(i, j) - mean) );
+    }
+    std_dev = sqrt((double)sum_sq/total_pixels);
+
+    return make_pair(mean, std_dev);
+}
+
+Mat_<uchar> binaryThresholding(const Mat_<uchar>& image, const pair<double, double>& stats)
+{
+    Mat_<uchar> image_binary(image.size());
+    
+    double Z = 0.9;
+    double threshold = stats.first + (Z * stats.second); 
+    for(int i = 0; i < image.rows; ++i)
+    {
+        for(int j = 0; j < image.cols; ++j)
+        {
+            if(image.at<uchar>(i, j) >= threshold + numeric_limits<double>::epsilon())
+                image_binary.at<uchar>(i, j) = 255;
             else
-                pseudo_hue_plane.at<double>(i, j) = ((double)R / (R+G));
+                image_binary.at<uchar>(i, j) = 0;
         }
     }
-    
-    // Normalize the pseudo-hue plane
-    double Hmin = getMin(pseudo_hue_plane);
-    double Hmax = getMax(pseudo_hue_plane);
-    double span = (Hmax - Hmin);
-
-    double Hnorm = 0.0;
-    Mat_<uchar> normalized_pseudo_hue_plane(pseudo_hue_plane.size());
-    for(int i = 0; i < pseudo_hue_plane.rows; ++i)
-    {
-        for(int j = 0; j < pseudo_hue_plane.cols; ++j)
-        {
-            Hnorm= ((pseudo_hue_plane.at<double>(i, j) - Hmin) / span);
-            normalized_pseudo_hue_plane.at<uchar>(i, j) = round(Hnorm * 255);
-        }
-    }
-
-    return normalized_pseudo_hue_plane;
+    return image_binary;
 }
-
-double getMax(const Mat_<double>& intensity_plane)
-{
-    double max_entry = intensity_plane.at<double>(0, 0);
-    for(int i = 0; i < intensity_plane.rows; ++i)
-    {
-        for(int j = 0; j < intensity_plane.cols; ++j)
-        {
-            if(intensity_plane.at<double>(i, j) >= max_entry + numeric_limits<double>::epsilon())
-                max_entry = intensity_plane.at<double>(i, j);
-        }
-    }
-    return max_entry;
-}
-
-double getMin(const Mat_<double>& intensity_plane)
-{
-    double min_entry = intensity_plane.at<double>(0, 0);
-    for(int i = 0; i < intensity_plane.rows; ++i)
-    {
-        for(int j = 0; j < intensity_plane.cols; ++j)
-        {
-            if(intensity_plane.at<double>(i, j) <= min_entry + numeric_limits<double>::epsilon())
-                min_entry = intensity_plane.at<double>(i, j);
-        }
-    }
-    return min_entry;
-}
-
-void help()
-{
-    cout << "\nThis program demonstrates eyebrow and eyebrow key-point detection using a color-based\n"
-        "method of eyebrow segmentation that extracts a hue-plane to separate\n" 
-        "the eyebrow from the skin region.\n";
-
-    cout << "\nUSAGE: ./eyebrow [IMAGE] [FACE_CASCADE] [EYE_CASCADE]\n"
-        "IMAGE\n\tPath to the image of a face taken as input.\n"
-        "FACE_CASCSDE\n\t Path to a haarcascade classifier for face detection.\n"
-        "EYE_CASCSDE\n\t Path to a haarcascade classifier for eye detection.\n";
-
-}
-

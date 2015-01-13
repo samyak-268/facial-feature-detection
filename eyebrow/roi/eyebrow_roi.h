@@ -20,6 +20,7 @@ class EyebrowROI
 
     public:
         Mat face_roi;
+        vector<Mat> eyebrows_roi;
         vector<Rect_<int> > faces;
         vector<Rect_<int> > eyes;
         
@@ -28,7 +29,7 @@ class EyebrowROI
         EyebrowROI(const EyebrowROI& _obj);
         void detectFace();
         void detectEyebrows();
-        void displayROI();
+        vector<Mat> displayROI();
 };
 
 #endif

@@ -1,6 +1,7 @@
 #ifndef _EYEBROW_ROI_CPP
 #define _EYEBROW_ROI_CPP
 
+#include <cmath>
 #include "eyebrow_roi.h"
 using namespace std;
 using namespace cv;
@@ -41,13 +42,15 @@ void EyebrowROI::detectEyebrows()
     return;
 }
 
-void EyebrowROI::displayROI()
+vector<Mat> EyebrowROI::displayROI()
 {
     for(unsigned int i = 0; i < faces.size(); ++i)
     {
         Rect_<int> face = faces[i];
+        /*
         rectangle(image, Point(face.x, face.y), Point(face.x+face.width, face.y+face.height),
                 Scalar(0, 0, 255), 1, 4);
+        */
 
         for(unsigned int j = 0; j < eyes.size(); ++j)
         {
@@ -58,15 +61,21 @@ void EyebrowROI::displayROI()
             int eyebrow_bbox_y = (e.y - e.height/5);
             
             int eyebrow_bbox_height = (e.height * 3)/5;
-            int eyebrow_bbox_width = (e.width * 3)/2;
+            int eyebrow_bbox_width = round((double)e.width * 1.6);
             
-            // Mark eyebrow region
+            // Save and mark eyebrow region
+            eyebrows_roi.push_back( face_roi(Rect(eyebrow_bbox_x, eyebrow_bbox_y, 
+                            eyebrow_bbox_width, eyebrow_bbox_height)) );
+
+            /*
             rectangle(face_roi, Point(eyebrow_bbox_x, eyebrow_bbox_y), 
                     Point(eyebrow_bbox_x+eyebrow_bbox_width, eyebrow_bbox_y+eyebrow_bbox_height), 
                     Scalar(255, 0, 0), 1, 4);
+            */
         }
     }
-    imshow("Eyebrow_Detection", image);
+    // imshow("Eyebrow_Detection", image);
+    return eyebrows_roi;
 }
 
 #endif

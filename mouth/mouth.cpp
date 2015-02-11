@@ -10,11 +10,15 @@
 #include <climits>
 
 #include "opencv2/highgui/highgui.hpp"
+#include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/core/core.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 
 using namespace std;
 using namespace cv;
+
+Mat_<Vec3b> extractFaceROI(Mat_<Vec3b> image, string face_cascade_path);
+Mat_<Vec3b> extractMouthROI(Mat_<Vec3b> face_image);
 
 Mat_<Vec3b> equalizeImage(Mat_<Vec3b> image_BGR);
 Mat_<uchar> transformPseudoHue(Mat_<Vec3b> image);
@@ -23,30 +27,87 @@ Mat_<uchar> transformCIELAB(Mat_<Vec3b> image_BGR);
 Mat_<uchar> transformLUX(Mat_<Vec3b> image_BGR);
 Mat_<uchar> transformModifiedLUX(Mat_<Vec3b> image_BGR);
 
+pair<double, double> returnImageStats(const Mat_<uchar>& image);
+Mat_<uchar> binaryThresholding(const Mat_<uchar>& image, const pair<double, double>& stats);
+
 int main(int argc, char** argv)
 {
-    if(argc != 2)
+    if(argc != 3)
     {
         cout << "Paramters missing\n";
         return -1;
     }
     
     const string input_image_path = argv[1];
-    Mat_<Vec3b> image_BGR = imread(input_image_path);
-    Mat_<uchar> image_BGR_eq = equalizeImage(image_BGR);
-    
-    Mat_<uchar> pseudo_hue_plane = transformPseudoHue(image_BGR);
-    // Mat_<uchar> chrominance_plane = transformLUX(image_BGR);
-    Mat_<uchar> modified_chrominance_plane = transformModifiedLUX(image_BGR);
+    const string face_cascade_path = argv[2];
 
-    // imshow("Original-Image", image_BGR);
+    Mat_<Vec3b> image_BGR = imread(input_image_path);
+    Mat_<Vec3b> mouth = extractMouthROI(extractFaceROI(image_BGR, face_cascade_path));
+    
+    Mat_<uchar> pseudo_hue_plane = transformPseudoHue(mouth);
+    Mat_<uchar> pseudo_hue_bin = binaryThresholding(pseudo_hue_plane, 
+            returnImageStats(pseudo_hue_plane));
+    
+    
+    // imshow("Input-Image", image_BGR);
+    // imshow("Face-ROI", face);
+    // imshow("Mouth-ROI", mouth);
     imshow("Pseudo-Hue", pseudo_hue_plane);
-    // imshow("Chrominance-Plane", chrominance_plane);
-    imshow("Modified-Chrominance-Plane", modified_chrominance_plane);
+    imshow("Pseudo-Hue-Binary", pseudo_hue_bin);
+    
+    /*
+     * Mat_<uchar> chrominance_plane = transformLUX(image_BGR);
+     * Mat_<uchar> modified_chrominance_plane = transformModifiedLUX(image_BGR);
+     *
+     * imshow("Chrominance-Plane", chrominance_plane);
+     * imshow("Modified-Chrominance-Plane", modified_chrominance_plane);
+     */
 
     waitKey(0);
     return 0;
 }
+
+Mat_<Vec3b> extractFaceROI(Mat_<Vec3b> image, string face_cascade_path)
+{
+    CascadeClassifier face_cascade;
+    vector<Rect_<int> > faces;
+    
+    face_cascade.load(face_cascade_path);
+    face_cascade.detectMultiScale(image, faces, 1.15, 3, 0|CASCADE_SCALE_IMAGE, Size(30, 30));
+
+    Mat_<Vec3b> face_ROI;
+    for(int i = 0; i < faces.size(); ++i)
+    {
+        Rect_<int> face = faces[i];
+        
+        int face_rows = face.height;
+        int face_cols = face.width;
+
+        face_ROI = image(Rect(face.x, face.y, face_cols, face_rows));
+
+        /*
+        int roi_x = face.x, roi_y = face.y + ((2 * face_rows) / 3);
+        int roi_rows = (face_rows - roi_y), roi_cols = face_cols;
+
+        rectangle(image, Point(roi_x, roi_y), Point(roi_x+roi_cols, roi_y+roi_rows),
+                                Scalar(255, 0, 0), 1, 4);
+        
+        */
+    }
+    return face_ROI;
+}
+
+Mat_<Vec3b> extractMouthROI(Mat_<Vec3b> face_image)
+{
+    int face_rows = face_image.rows;
+    int face_cols = face_image.cols;
+
+    int mouth_x = (face_cols / 4), mouth_y = (2 * face_rows) / 3;
+    int mouth_rows = (2 * (face_rows - mouth_y)) / 3, mouth_cols = (face_cols / 2);
+
+    return face_image(Rect(mouth_x, mouth_y, mouth_cols, mouth_rows));
+}
+
 
 /*
  * Equalize a BGR image by converting it to the YCrCb space and
@@ -190,4 +251,47 @@ Mat_<uchar> transformModifiedLUX(Mat_<Vec3b> image_BGR)
         }
     }
     return Ucap;
+}
+
+pair<double, double> returnImageStats(const Mat_<uchar>& image)
+{
+    double mean = 0.0, std_dev = 0.0;
+    int total_pixels = (image.rows * image.cols);
+    
+    int intensity_sum = 0;
+    for(int i = 0; i < image.rows; ++i)
+    {
+        for(int j = 0; j < image.cols; ++j)
+            intensity_sum += image.at<uchar>(i, j);
+    }
+    mean = (double)intensity_sum/total_pixels;
+
+    int sum_sq = 0;
+    for(int i = 0; i < image.rows; ++i)
+    {
+        for(int j = 0; j < image.cols; ++j)
+            sum_sq += ( (image.at<uchar>(i, j) - mean) * (image.at<uchar>(i, j) - mean) );
+    }
+    std_dev = sqrt((double)sum_sq/total_pixels);
+
+    return make_pair(mean, std_dev);
+}
+
+Mat_<uchar> binaryThresholding(const Mat_<uchar>& image, const pair<double, double>& stats)
+{
+    Mat_<uchar> image_binary(image.size());
+    
+    double Z = 0.9;
+    double threshold = stats.first + (Z * stats.second); 
+    for(int i = 0; i < image.rows; ++i)
+    {
+        for(int j = 0; j < image.cols; ++j)
+        {
+            if(image.at<uchar>(i, j) >= threshold + numeric_limits<double>::epsilon())
+                image_binary.at<uchar>(i, j) = 255;
+            else
+                image_binary.at<uchar>(i, j) = 0;
+        }
+    }
+    return image_binary;
 }

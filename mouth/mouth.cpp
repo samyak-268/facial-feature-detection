@@ -30,6 +30,7 @@ Mat_<uchar> transformModifiedLUX(Mat_<Vec3b> image_BGR);
 pair<double, double> returnImageStats(const Mat_<uchar>& image);
 Mat_<uchar> binaryThresholding(const Mat_<uchar>& image, const pair<double, double>& stats);
 int returnLargestContourIndex(vector<vector<Point> > contours);
+int findClosest(vector<int> x_contour, int x);
 
 int main(int argc, char** argv)
 {
@@ -43,7 +44,8 @@ int main(int argc, char** argv)
     const string face_cascade_path = argv[2];
 
     Mat_<Vec3b> image_BGR = imread(input_image_path);
-    Mat_<Vec3b> mouth = extractMouthROI(extractFaceROI(image_BGR, face_cascade_path));
+    Mat_<Vec3b> face = extractFaceROI(image_BGR, face_cascade_path);
+    Mat_<Vec3b> mouth = extractMouthROI(face);
     
     Mat_<uchar> pseudo_hue_plane = transformPseudoHue(mouth);
     Mat_<uchar> pseudo_hue_bin = binaryThresholding(pseudo_hue_plane, 
@@ -55,29 +57,87 @@ int main(int argc, char** argv)
     findContours(binary_clone, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
     
     // Initialize blank image (for drawing contours)
-    Mat_<uchar> image_contour(pseudo_hue_bin.size());
+    Mat_<Vec3b> image_contour(pseudo_hue_bin.size());
     for(int i = 0; i < image_contour.rows; ++i)
     {
         for(int j = 0; j < image_contour.cols; ++j)
-            image_contour.at<uchar>(i, j) = 0;
+        {
+            image_contour(i, j)[0] = 0;
+            image_contour(i, j)[1] = 0;
+            image_contour(i, j)[2] = 0;
+        }
     }
 
     // Draw largest contour on the blank image
-    cout << "Size of the contour image: " << image_contour.rows << " X " << image_contour.cols << "\n";
     int largest_contour_idx = returnLargestContourIndex(contours);
-    for(int i = 0; i < contours[largest_contour_idx].size(); ++i)
+    vector<Point> largest_contour = contours[largest_contour_idx];
+    vector<int> x_contour(largest_contour.size());
+    vector<int> y_contour(largest_contour.size());
+    for(int i = 0; i < largest_contour.size(); ++i)
     {
-        Point_<int> pt = contours[largest_contour_idx][i];
-        image_contour.at<uchar>(pt.y, pt.x) = 255;
+        Point_<int> pt = largest_contour[i];
+        x_contour[i] = pt.x;
+        y_contour[i] = pt.y;
+        
+        image_contour(pt.y, pt.x)[0] = 255;
+        image_contour(pt.y, pt.x)[1] = 255;
+        image_contour(pt.y, pt.x)[2] = 255;
+    }
+
+    // Find points with minimum and maximum x co-rodinates
+    int min_x = INT_MAX, max_x = INT_MIN;
+    int min_x_idx = -1, max_x_idx = -1;
+    for(int i = 0; i < x_contour.size(); ++i)
+    {
+        if(x_contour[i] < min_x)
+        {
+            min_x = x_contour[i];
+            min_x_idx = i;
+        }
+        
+        if(x_contour[i] > max_x)
+        {
+            max_x = x_contour[i];
+            max_x_idx = i;
+        }
+    }
+    int min_y = y_contour[min_x_idx], max_y = y_contour[max_x_idx];
+
+    // Find x-cordinate of point which is mid-way between the 2 corner points.
+    int actual_mid_x = (min_x + max_x) / 2;
+    int closest_x_idx = findClosest(x_contour, actual_mid_x);
+    int closest_mid_x = x_contour[closest_x_idx];
+    
+    int count = 0;
+    vector<int> mid_y_values;
+    for(int i = 0; i < x_contour.size(); ++i)
+    {
+        if(x_contour[i] == closest_mid_x)
+        {
+            ++count;
+            mid_y_values.push_back(y_contour[i]);
+        }
+    }
+
+    // Mark end-points
+    circle(image_contour, Point(min_x, min_y), 3.0, Scalar(0, 0, 255), -1, 8);
+    circle(image_contour, Point(max_x, max_y), 3.0, Scalar(0, 0, 255), -1, 8);
+    line(image_contour, Point(min_x, min_y), Point(max_x, max_y), Scalar(0, 0, 255), 1, 8);
+    
+    // Mark mid-points
+    for(int i = 0; i < mid_y_values.size(); ++i)
+    {
+        circle(image_contour, Point(closest_mid_x, mid_y_values[i]), 3.0, Scalar(0, 0, 255), -1, 8);
+        line(image_contour, Point(closest_mid_x, mid_y_values[i]), Point(min_x, min_y), Scalar(0, 0, 255), 1, 8);
+        line(image_contour, Point(closest_mid_x, mid_y_values[i]), Point(max_x, max_y), Scalar(0, 0, 255), 1, 8);
     }
     
-    
-    // imshow("Input-Image", image_BGR);
     // imshow("Face-ROI", face);
-    // imshow("Mouth-ROI", mouth);
-    imshow("Pseudo-Hue", pseudo_hue_plane);
-    // imshow("Pseudo-Hue-Binary", pseudo_hue_bin);
+    imshow("Mouth-ROI", mouth);
+    // imshow("Input-Image", image_BGR);
     imshow("Contour", image_contour);
+    // imshow("Pseudo-Hue", pseudo_hue_plane);
+    // imshow("Pseudo-Hue-Binary", pseudo_hue_bin);
     
     /*
      * Mat_<uchar> chrominance_plane = transformLUX(image_BGR);
@@ -85,6 +145,7 @@ int main(int argc, char** argv)
      *
      * imshow("Chrominance-Plane", chrominance_plane);
      * imshow("Modified-Chrominance-Plane", modified_chrominance_plane);
+     *
      */
 
     waitKey(0);
@@ -126,8 +187,8 @@ Mat_<Vec3b> extractMouthROI(Mat_<Vec3b> face_image)
     int face_rows = face_image.rows;
     int face_cols = face_image.cols;
 
-    int mouth_x = (face_cols / 4), mouth_y = (2 * face_rows) / 3;
-    int mouth_rows = (2 * (face_rows - mouth_y)) / 3, mouth_cols = (face_cols / 2);
+    int mouth_x = (face_cols / 4), mouth_y = (3 * face_rows) / 4;
+    int mouth_rows = (face_rows - mouth_y), mouth_cols = (face_cols / 2);
 
     return face_image(Rect(mouth_x, mouth_y, mouth_cols, mouth_rows));
 }
@@ -333,4 +394,23 @@ int returnLargestContourIndex(vector<vector<Point> > contours)
         }
     }
     return max_contour_idx;
+}
+
+int findClosest(vector<int> x_contour, int x)
+{
+    vector<int> diff(x_contour.size());
+    for(int i = 0; i < x_contour.size(); ++i)
+        diff[i] = (int)abs(x_contour[i] - x);
+
+    // Find the minimum value in the diff array
+    int min_diff = INT_MAX, min_diff_idx = -1;
+    for(int i = 0; i < diff.size(); ++i)
+    {
+        if(diff[i] < min_diff)
+        {
+            min_diff = diff[i];
+            min_diff_idx = i;
+        }
+    }
+    return min_diff_idx;
 }
